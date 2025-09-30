@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Travel Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
+    <script type="importmap">
+      {
+        "imports": {
+          "react/": "https://aistudiocdn.com/react@^19.1.1/",
+          "react": "https://aistudiocdn.com/react@^19.1.1",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+          "@google/genai": "https://aistudiocdn.com/@google/genai@^1.21.0"
+        }
+      }
+    </script>
+    <script>
+      // FOR LOCAL DEVELOPMENT ONLY
+      // --------------------------
+      // This script simulates the presence of an environment variable for the Gemini API key.
+      // In a real production environment, this key should be managed securely and not hardcoded.
+      //
+      // Instructions:
+      // 1. Replace "YOUR_GEMINI_API_KEY_HERE" with your actual Google Gemini API key.
+      // 2. IMPORTANT: Do NOT commit this file to a public repository with your key in it.
+      window.process = {
+        env: {
+          API_KEY: "YOUR_GEMINI_API_KEY_HERE"
+        }
+      };
+    </script>
+    <style>
+      :root {
+        --glow-from: #F97316;
+        --glow-to: #A855F7;
+      }
+      .font-poppins { font-family: 'Poppins', sans-serif; }
+      .font-inter { font-family: 'Inter', sans-serif; }
+
+      .gradient-bg {
+        background-image: linear-gradient(to right, var(--glow-from), var(--glow-to));
+      }
+      .gradient-text {
+        background-image: linear-gradient(to right, var(--glow-from), var(--glow-to));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .glass-card {
+        background-color: rgba(2,6,23, 0.5); /* bg-slate-950/50 */
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .gradient-border-mask {
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+      
+      .share-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .day-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s ease-in-out;
+      }
+      .day-content.open {
+        max-height: 1000px; /* A large enough value */
+      }
+      .chevron-icon {
+        transition: transform 0.3s ease-in-out;
+      }
+      .chevron-icon.open {
+        transform: rotate(90deg);
+      }
+
+      /* New Skeleton Loader Styles */
+      .skeleton-loader {
+        position: relative;
+        overflow: hidden;
+        background-color: #1e293b; /* slate-800 */
+        border-radius: 0.5rem; /* rounded-lg */
+      }
+      .skeleton-loader::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          transform: translateX(-100%);
+          background: linear-gradient(90deg, transparent, rgba(51, 65, 85, 0.5), transparent);
+          animation: shimmer 1.5s infinite;
+      }
+      @keyframes shimmer {
+          100% {
+              transform: translateX(100%);
+          }
+      }
+
+      /* New Toast Notification Styles */
+      .toast-container {
+          position: fixed;
+          bottom: 2rem;
+          left: 50%;
+          z-index: 1000;
+          animation: fadeInOut 3s ease-in-out forwards;
+      }
+      .toast-content {
+          transform: translateX(-50%);
+          background-color: #020617; /* slate-950 */
+          color: #cbd5e1; /* slate-300 */
+          padding: 0.75rem 1.5rem;
+          border-radius: 9999px; /* rounded-full */
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateY(20px); }
+          15% { opacity: 1; transform: translateY(0); }
+          85% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(20px); }
+      }
+
+      @media print {
+        /* Hide non-printable elements */
+        .no-print {
+          display: none !important;
+        }
+        
+        /* Reset body and basic typography for print */
+        body {
+          padding: 0 !important;
+          margin: 0 !important;
+          background-color: #fff !important;
+          color: #000 !important;
+          font-family: 'Times New Roman', Times, serif; /* Use a standard serif font for readability */
+          font-size: 12pt;
+        }
+        
+        /* Ensure the printable area uses the full page */
+        .printable-container {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        .printable-area {
+          width: 100% !important;
+          max-width: 100% !important;
+          padding: 1cm !important;
+          margin: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          background: #fff !important;
+        }
+        
+        /* Reset all elements within the printable area for clean black & white output */
+        .printable-area * {
+          color: #000 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+          border-color: #ccc !important;
+        }
+
+        /* Force open all collapsible day sections */
+        .printable-area .day-content {
+          max-height: none !important;
+          overflow: visible !important;
+          display: block !important;
+        }
+        
+        /* FIX: Ensure the flex container for day-plan stacks vertically and simply */
+        .printable-area .day-plan-container {
+            display: block !important;
+        }
+
+        /* Hide the expand/collapse chevron icon */
+        .printable-area .chevron-icon {
+          display: none !important;
+        }
+
+        /* Specifically handle the main title's gradient text */
+        .printable-area .gradient-text-print {
+          background-image: none !important;
+          -webkit-background-clip: unset !important;
+          background-clip: unset !important;
+          color: #000 !important;
+        }
+        
+        /* Style the 'Day' indicator for print */
+        .printable-area .day-indicator-print {
+          border: 2px solid #000 !important;
+          background-color: #fff !important;
+          -webkit-print-color-adjust: exact;
+          color-adjust: exact;
+          page-break-inside: avoid;
+        }
+        
+        /* Style the plan cards for print */
+        .printable-area .plan-card-print {
+          border: 1px solid #ccc !important;
+          page-break-inside: avoid; /* Prevent cards from splitting across pages */
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-900 text-slate-200 font-inter">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
